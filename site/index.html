@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>HandleIT Office Manager · AI office help for lawn care and home-service businesses</title>
-<meta name="description" content="HandleIT Office Manager texts back missed calls, chases quotes and overdue invoices, and reworks your day when it rains. You approve anything that matters from your phone.">
+<title>HandleIT Office Manager · AI office help for trades and home-service businesses</title>
+<meta name="description" content="HandleIT Office Manager texts back missed calls, chases quotes and overdue invoices, and reshuffles your schedule when the day changes. You approve anything that matters from your phone.">
 <meta property="og:title" content="HandleIT Office Manager">
-<meta property="og:description" content="AI office help for lawn care and home-service businesses. Nothing goes out without your OK.">
+<meta property="og:description" content="AI office help for trades and home-service businesses. Nothing goes out without your OK.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://handleit.online/">
+<link rel="canonical" href="https://handleit.online/">
 <meta property="og:image" content="https://handleit.online/assets/logo-192.png">
 <meta name="theme-color" content="#05090A">
 <link rel="icon" href="/assets/logo-192.png">
@@ -48,6 +49,8 @@ nav.links a{text-decoration:none}
 nav.links a:hover{color:var(--text)}
 header .btn{min-height:42px;padding:9px 16px;font-size:15px}
 @media(max-width:860px){nav.links{display:none}header .btn{margin-left:auto}}
+header .btn{white-space:nowrap}
+@media(max-width:480px){.brand small{display:none}}
 
 /* hero */
 .hero{padding:72px 0 56px}
@@ -57,6 +60,10 @@ header .btn{min-height:42px;padding:9px 16px;font-size:15px}
 .hero .lead{margin-top:20px}
 .cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
 .note{margin-top:14px;font-size:14px;color:var(--muted)}
+.trades{list-style:none;margin:22px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.trades li{font-size:13px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 12px}
+.trades a{color:var(--green);text-decoration:none}
+.trades li:has(a){border-color:var(--green-line)}
 @media(max-width:900px){.hero{padding:44px 0 36px}.hero .wrap{grid-template-columns:1fr;gap:36px}}
 
 /* phone mock */
@@ -153,24 +160,25 @@ footer a:hover{color:var(--text)}
   <div class="hero">
     <div class="wrap">
       <div>
-        <p class="mono">// For lawn care and home-service businesses</p>
-        <h1>Stop losing jobs <span class="hl">while you're on the mower.</span></h1>
-        <p class="lead">HandleIT Office Manager texts back missed calls, chases quotes and overdue invoices, and reworks your day when it rains. Anything that matters waits for your OK on your phone.</p>
+        <p class="mono">// For trades and home-service businesses</p>
+        <h1>Stop losing jobs <span class="hl">while you're on a job.</span></h1>
+        <p class="lead">HandleIT Office Manager texts back missed calls, chases quotes and overdue invoices, and reshuffles your schedule when the day changes. Anything that matters waits for your OK on your phone.</p>
         <div class="cta">
           <a class="btn btn-primary" href="#pilot">Join the pilot</a>
           <a class="btn" href="https://peasantware.com/command-trades/" target="_blank" rel="noopener">See the demo ↗</a>
         </div>
         <p class="note">Works alongside the scheduling and invoicing software you already use. Setup is done for you.</p>
+        <ul class="trades" aria-label="Trades we work with"><li>HVAC</li><li>Plumbing</li><li>Electrical</li><li><a href="/lawn-care/">Lawn &amp; landscaping →</a></li><li>Cleaning</li><li>Pest control</li><li>Pool</li><li>Roofing</li></ul>
       </div>
       <div class="phone" aria-label="Example: an approval waiting on the owner's phone">
         <div class="phone-top"><span>Today</span><span>3 need you</span></div>
         <div class="card">
           <div class="who"><span class="dot"></span>Calls &amp; Leads · needs your OK</div>
-          <div class="what">Text Dan: “We can be there Thursday 8–10 AM to fix the irrigation head.”</div>
-          <div class="why">Missed his call twice · draft is ready</div>
+          <div class="what">Text Maria: “We can be there Thursday 8–10 AM to look at the water heater.”</div>
+          <div class="why">Missed her call twice · draft is ready</div>
           <button class="hold" id="hold" type="button"><span>Hold to approve</span></button>
         </div>
-        <div class="card mini"><span><b>Rain after 3 PM</b> · 4 stops can move to Thursday</span><span class="t">Crews</span></div>
+        <div class="card mini"><span><b>Job running long</b> · 2 afternoon visits can move to Thursday</span><span class="t">Schedule</span></div>
         <div class="card mini"><span><b>$4,280 overdue</b> · reminders drafted for 6 customers</span><span class="t">Invoices</span></div>
         <div class="card mini"><span><span class="dot g" style="display:inline-block;margin-right:6px"></span>Missed call texted back in 40 sec</span><span class="t">Done</span></div>
       </div>
@@ -199,11 +207,11 @@ footer a:hover{color:var(--text)}
       </div>
       <div class="grid">
         <div class="feat"><span class="tag">CALLS &amp; LEADS</span><h3>Every missed call gets a text back</h3><p>Missed callers hear from you right away. New leads are asked for their address, service and timing, and voicemails land on one list.</p></div>
-        <div class="feat"><span class="tag">QUOTES</span><h3>Quotes that follow themselves up</h3><p>Drafts from your site-walk notes and photos, reminders when a customer goes quiet, and line items kept in step with supplier prices.</p></div>
-        <div class="feat"><span class="tag">CREWS &amp; JOBS</span><h3>Rain plans before the rain</h3><p>Watches the forecast, proposes reschedules, texts customers once you approve, and sends crew leads tomorrow's routes.</p></div>
+        <div class="feat"><span class="tag">QUOTES</span><h3>Quotes that follow themselves up</h3><p>Drafts from your walkthrough notes and photos, reminders when a customer goes quiet, and line items kept in step with supplier prices.</p></div>
+        <div class="feat"><span class="tag">CREWS &amp; JOBS</span><h3>A schedule that bends, not breaks</h3><p>When weather, a long job or a sick tech changes the day, it proposes reschedules, texts customers once you approve, and sends your team tomorrow's routes.</p></div>
         <div class="feat"><span class="tag">INVOICES &amp; CASH</span><h3>Get paid without the awkward calls</h3><p>Friendly reminders on overdue invoices, receipts sorted, and a heads-up before payroll or a big bill.</p></div>
         <div class="feat"><span class="tag">REVIEWS</span><h3>More reviews, better replies</h3><p>Asks happy customers for a review the day after the job and drafts calm replies to the tough ones.</p></div>
-        <div class="feat"><span class="tag">EQUIPMENT</span><h3>Nothing quietly expires</h3><p>Tracks service intervals, insurance renewals and licenses, and books the shop when a machine is due.</p></div>
+        <div class="feat"><span class="tag">EQUIPMENT</span><h3>Nothing quietly expires</h3><p>Tracks vehicle and equipment service, insurance renewals and licenses, and books the shop when something is due.</p></div>
       </div>
     </div>
   </section>
@@ -217,10 +225,10 @@ footer a:hover{color:var(--text)}
       </div>
       <ul class="checks">
         <li><div><b>Hold to approve</b><span>Sending, paying and rescheduling wait for a deliberate press on your phone. Letting go cancels.</span></div></li>
-        <li><div><b>Limits for your team</b><span>Let a crew lead approve small purchases up to an amount you set. Anything bigger comes to you.</span></div></li>
+        <li><div><b>Limits for your team</b><span>Let a lead tech or crew lead approve small purchases up to an amount you set. Anything bigger comes to you.</span></div></li>
         <li><div><b>A record of everything</b><span>Every action is logged with what was sent, to whom and who approved it.</span></div></li>
         <li><div><b>Texts from a proper business number</b><span>Messages go out from a registered business texting number, not someone's personal phone.</span></div></li>
-        <li><div><b>Your crew doesn't need an app</b><span>Crew leads get routes and updates by text and reply the same way.</span></div></li>
+        <li><div><b>Your team doesn't need an app</b><span>Techs and crew leads get routes and updates by text and reply the same way.</span></div></li>
       </ul>
     </div>
   </section>
@@ -230,7 +238,7 @@ footer a:hover{color:var(--text)}
       <div class="sec-head">
         <p class="mono">// Pricing</p>
         <h2>One setup, one monthly price.</h2>
-        <p class="lead">Priced for a small crew, not an enterprise. Pilot businesses help shape the product and lock in founding pricing.</p>
+        <p class="lead">Priced for a small shop, not an enterprise. Pilot businesses help shape the product and lock in founding pricing.</p>
       </div>
       <div class="price">
         <div class="box hl">
@@ -239,7 +247,7 @@ footer a:hover{color:var(--text)}
           <ul>
             <li>Setup done for you: phone line, texting number, calendar, invoicing</li>
             <li>All six assistants, tuned to how your business runs</li>
-            <li>Approvals on your phone, with limits for your crew leads</li>
+            <li>Approvals on your phone, with limits for your leads</li>
           </ul>
           <div class="cta" style="margin-top:24px"><a class="btn btn-primary" href="#pilot">Ask for pilot pricing</a></div>
         </div>
@@ -259,8 +267,8 @@ footer a:hover{color:var(--text)}
       <details><summary>Do I have to switch from the software I use now?</summary><p>No. Office Manager works alongside the scheduling, quoting and invoicing tools you already pay for. It reads from them and drafts the work; you keep using what you know.</p></details>
       <details><summary>Will it text my customers without asking me?</summary><p>Only the messages you choose to pre-approve, like an instant reply to a missed call. Everything else waits for your OK, and you can change those settings anytime.</p></details>
       <details><summary>Does it answer the phone for me?</summary><p>During the pilot it texts back missed calls and organizes voicemails into a lead list. You or your office still take the live calls.</p></details>
-      <details><summary>What does my crew have to do?</summary><p>Nothing new. Crew leads get their routes and reschedules by text and can reply to mark jobs done or ask for changes.</p></details>
-      <details><summary>Who is it for?</summary><p>We're starting with lawn care and landscaping companies, then irrigation, tree, pool and pest control. If your phone rings while your hands are busy, it's built for you.</p></details>
+      <details><summary>What does my team have to do?</summary><p>Nothing new. Techs and crew leads get their routes and reschedules by text and can reply to mark jobs done or ask for changes.</p></details>
+      <details><summary>Who is it for?</summary><p>Owner-run trades and home-service businesses with a few people in the field: HVAC, plumbing, electrical, lawn care and landscaping, cleaning, pest control, pool service, roofing and more. If your phone rings while your hands are busy, it's built for you.</p></details>
       <details><summary>Where are you taking pilot customers?</summary><p>We're onboarding a small number of pilot businesses in Central Florida first.</p></details>
     </div>
   </section>
@@ -284,10 +292,10 @@ footer a:hover{color:var(--text)}
           <label>Phone (optional)<input type="tel" name="phone" autocomplete="tel"></label>
         </div>
         <div class="row">
-          <label>Type of business<select name="trade"><option>Lawn care</option><option>Landscaping</option><option>Irrigation</option><option>Tree service</option><option>Pool service</option><option>Pest control</option><option>Other home service</option></select></label>
-          <label>Crews in the field<select name="crews"><option>Just me</option><option>1–2 crews</option><option>3–5 crews</option><option>6 or more</option></select></label>
+          <label>Type of business<select name="trade"><option value="">Choose one</option><option>HVAC</option><option>Plumbing</option><option>Electrical</option><option>Lawn care / landscaping</option><option>Cleaning</option><option>Pest control</option><option>Pool service</option><option>Roofing</option><option>Handyman / remodeling</option><option>Other</option></select></label>
+          <label>People in the field<select name="crews"><option>Just me</option><option>2–5</option><option>6–15</option><option>16 or more</option></select></label>
         </div>
-        <label>What eats most of your office time?<textarea name="goals" placeholder="Missed calls, chasing quotes, rain reschedules, late payments…" required></textarea></label>
+        <label>What eats most of your office time?<textarea name="goals" placeholder="Missed calls, chasing quotes, rescheduling, late payments…" required></textarea></label>
         <button class="btn btn-primary" type="submit">Send</button>
         <p class="status" id="pilot-status" role="status" aria-live="polite"></p>
       </form>
@@ -326,7 +334,7 @@ footer a:hover{color:var(--text)}
     const btn=f.querySelector('button[type=submit]'); btn.disabled=true; btn.textContent='Sending…';
     try{
       const fd=new FormData(f); fd.delete('website');
-      const r=await fetch('process_form.php',{method:'POST',body:fd});
+      const r=await fetch('/process_form.php',{method:'POST',body:fd});
       if(r.ok){f.reset(); s.className='status ok'; s.textContent='Thanks. We got it and will be in touch soon.'}
       else{s.className='status err'; s.textContent='Something went wrong sending that. Please email info@handleit.online.'}
     }catch(err){s.className='status err'; s.textContent='Network error. Please try again or email info@handleit.online.'}
