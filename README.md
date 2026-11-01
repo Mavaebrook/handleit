@@ -17,4 +17,4 @@ Pushes to `main` that touch `site/` run `.github/workflows/deploy.yml`, which co
 
 Nothing is built on the server.
 
-The earlier transit-app scaffold is kept at the tag `archive/transit-presence`.
+The earlier transit-app scaffold is kept on the branch `archive/transit-presence`.
