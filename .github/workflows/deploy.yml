@@ -1,0 +1,48 @@
+name: Deploy site
+
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', '.github/workflows/deploy.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-site
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for deploy key
+        id: key
+        env:
+          KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::warning::SSH_PRIVATE_KEY is not set; skipping deploy."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Make sure no server secrets are in the site
+        run: |
+          if find site -name 'process_form.php*' -o -name '.env*' | grep -q .; then
+            echo "::error::Server-only files found in site/"; exit 1
+          fi
+
+      - name: Rsync to web root
+        if: steps.key.outputs.present == 'true'
+        env:
+          KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H 50.21.187.249 >> ~/.ssh/known_hosts 2>/dev/null
+          rsync -rlvz --checksum \
+            -e "ssh -i ~/.ssh/id_deploy" \
+            site/ teddy@50.21.187.249:/var/www/handleit.online/
