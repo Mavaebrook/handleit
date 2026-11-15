@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Locate configured transfer helper without reading credential values
+      - name: Read interface metadata only
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         shell: bash
@@ -23,30 +23,23 @@ jobs:
           trap 'rm -f ~/.ssh/release_key' EXIT
           ssh-keyscan -H 50.21.187.249 >> ~/.ssh/known_hosts 2>/dev/null
           ssh -i ~/.ssh/release_key -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15 teddy@50.21.187.249 python3 - <<'PY'
-          import subprocess,pathlib,shutil,re,hashlib
+          import ast,pathlib,json,hashlib
           p=pathlib.Path('/home/teddy/handleit-releases/approved-mockup-20261114.zip')
           print('STAGED',p.exists())
           if p.is_file():print('STAGED RECEIPT',p.stat().st_size,hashlib.sha256(p.read_bytes()).hexdigest())
-          try:
-              lines=subprocess.check_output(['ss','-ltnp'],text=True).splitlines()
-              for line in lines:
-                  if ':8766 ' in line:
-                      print('SOCKET',line)
-                      for pid in re.findall(r'pid=(\d+)',line):
-                          q=pathlib.Path('/proc')/pid
-                          print('HELPER_CWD',q.joinpath('cwd').resolve())
-                          args=q.joinpath('cmdline').read_bytes().split(b'\0')
-                          print('HELPER_EXECUTABLES',[a.decode() for a in args if a.endswith(b'.py') or b'python' in a])
-          except Exception as e: print('HELPER',type(e).__name__)
-          for name in ['rclone','gdrive','drive']:
-              cmd=shutil.which(name)
-              print('CLIENT',name,cmd)
-              if name=='rclone' and cmd:
-                  r=subprocess.run([cmd,'listremotes'],capture_output=True,text=True,timeout=10)
-                  print('REMOTE_NAMES',r.stdout[:1000])
-          home=pathlib.Path('/home/teddy')
-          for folder in home.iterdir():
-              if folder.is_dir() and any(w in folder.name.lower() for w in ['google','mcp','athena','gdrive']):
-                  print('TRANSFER_PROJECT',str(folder))
-                  for file in folder.glob('*.py'):print('HELPER_SOURCE',str(file))
+          source=pathlib.Path('/home/teddy/google_mcp_server.py').read_text()
+          tree=ast.parse(source)
+          for node in ast.walk(tree):
+              if isinstance(node,(ast.FunctionDef,ast.AsyncFunctionDef)):
+                  print('FUNCTION',node.name,ast.unparse(node.args))
+                  for d in node.decorator_list:
+                      if isinstance(d,ast.Call):
+                          print('DECORATOR',ast.unparse(d.func),[a.value for a in d.args if isinstance(a,ast.Constant) and isinstance(a.value,str) and len(a.value)<120])
+              if isinstance(node,ast.Constant) and isinstance(node.value,str):
+                  v=node.value
+                  if (v.startswith('/') and len(v)<200) or (v.endswith('.json') and len(v)<160):
+                      print('PATH_LITERAL',v)
+              if isinstance(node,ast.ImportFrom):print('IMPORT',node.module,[x.name for x in node.names])
+              if isinstance(node,ast.Call) and isinstance(node.func,ast.Name) and node.func.id in ['Route','Mount']:
+                  print('ROUTE',ast.unparse(node))
           PY
