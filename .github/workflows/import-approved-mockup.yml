@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Inspect existing local transfer interface
+      - name: Locate configured transfer helper without reading credential values
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         shell: bash
@@ -23,45 +23,30 @@ jobs:
           trap 'rm -f ~/.ssh/release_key' EXIT
           ssh-keyscan -H 50.21.187.249 >> ~/.ssh/known_hosts 2>/dev/null
           ssh -i ~/.ssh/release_key -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15 teddy@50.21.187.249 python3 - <<'PY'
-          import json, urllib.request, urllib.error
-          base='http://localhost:8766'
-          headers={'Accept':'application/json, text/event-stream','Content-Type':'application/json'}
-          def rpc(endpoint,method,params,ident=None):
-              payload={'jsonrpc':'2.0','method':method,'params':params}
-              if ident is not None:payload['id']=ident
-              with urllib.request.urlopen(urllib.request.Request(base+endpoint,data=json.dumps(payload).encode(),headers=headers,method='POST'),timeout=20) as r:
-                  session=r.headers.get('Mcp-Session-Id')
-                  if session:headers['Mcp-Session-Id']=session
-                  if ident is None:return {}
-                  if 'text/event-stream' in r.headers.get('Content-Type',''):
-                      for line in r:
-                          if line.startswith(b'data:'):
-                              obj=json.loads(line[5:])
-                              if obj.get('id')==ident:return obj
-                  return json.load(r)
-          found=False
-          for endpoint in ['/mcp','/mcp/']:
-              try:
-                  result=rpc(endpoint,'initialize',{'protocolVersion':'2024-11-05','capabilities':{},'clientInfo':{'name':'handleit-release','version':'1'}},1)
-                  headers['MCP-Protocol-Version']=result.get('result',{}).get('protocolVersion','2024-11-05')
-                  print('ENDPOINT',endpoint,'INITIALIZED', 'result' in result)
-                  rpc(endpoint,'notifications/initialized',{})
-                  result=rpc(endpoint,'tools/list',{},2)
-                  tools=result.get('result',{}).get('tools',[])
-                  print('TOOL COUNT',len(tools))
-                  for tool in tools:
-                      if any(x in tool.get('name','').lower() for x in ['drive','download','file','google']):
-                          print(json.dumps(tool)[:24000])
-                  found=True;break
-              except urllib.error.HTTPError as e:
-                  text=e.read(500).decode('utf8','replace')
-                  print('HTTP',endpoint,e.code)
-                  if not any(w in text.lower() for w in ['access_token','refresh_token','client_secret','bearer']):print(text)
-              except Exception as e: print(type(e).__name__)
-          if not found:
-              try:
-                  with urllib.request.urlopen(base+'/openapi.json',timeout=10) as r: spec=json.load(r)
-                  for path,methods in spec.get('paths',{}).items():
-                      if any(x in path.lower() for x in ['drive','file','download','mcp','tool']): print('API',path,json.dumps(methods)[:14000])
-              except Exception as e:print('API',type(e).__name__)
+          import subprocess,pathlib,shutil,re,hashlib
+          p=pathlib.Path('/home/teddy/handleit-releases/approved-mockup-20261114.zip')
+          print('STAGED',p.exists())
+          if p.is_file():print('STAGED RECEIPT',p.stat().st_size,hashlib.sha256(p.read_bytes()).hexdigest())
+          try:
+              lines=subprocess.check_output(['ss','-ltnp'],text=True).splitlines()
+              for line in lines:
+                  if ':8766 ' in line:
+                      print('SOCKET',line)
+                      for pid in re.findall(r'pid=(\d+)',line):
+                          q=pathlib.Path('/proc')/pid
+                          print('HELPER_CWD',q.joinpath('cwd').resolve())
+                          args=q.joinpath('cmdline').read_bytes().split(b'\0')
+                          print('HELPER_EXECUTABLES',[a.decode() for a in args if a.endswith(b'.py') or b'python' in a])
+          except Exception as e: print('HELPER',type(e).__name__)
+          for name in ['rclone','gdrive','drive']:
+              cmd=shutil.which(name)
+              print('CLIENT',name,cmd)
+              if name=='rclone' and cmd:
+                  r=subprocess.run([cmd,'listremotes'],capture_output=True,text=True,timeout=10)
+                  print('REMOTE_NAMES',r.stdout[:1000])
+          home=pathlib.Path('/home/teddy')
+          for folder in home.iterdir():
+              if folder.is_dir() and any(w in folder.name.lower() for w in ['google','mcp','athena','gdrive']):
+                  print('TRANSFER_PROJECT',str(folder))
+                  for file in folder.glob('*.py'):print('HELPER_SOURCE',str(file))
           PY
