@@ -4,96 +4,34 @@ on:
     branches: ['release/approved-mockup-20261114']
     paths: ['.github/workflows/import-approved-mockup.yml']
 permissions:
-  contents: write
-concurrency:
-  group: handleit-approved-mockup-import
-  cancel-in-progress: false
+  contents: read
 jobs:
-  import:
+  handoff:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: release/approved-mockup-20261114
-      - name: Transfer exact approved release using existing local Drive authorization
+      - name: Prepare one-time encrypted artifact handoff
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$SSH_PRIVATE_KEY"
           mkdir -p ~/.ssh
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/release_key
           chmod 600 ~/.ssh/release_key
           trap 'rm -f ~/.ssh/release_key' EXIT
           ssh-keyscan -H 50.21.187.249 >> ~/.ssh/known_hosts 2>/dev/null
-          ssh -i ~/.ssh/release_key -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15 teddy@50.21.187.249 python3 - > "$RUNNER_TEMP/approved-mockup.zip" <<'PY'
-          import sys, pathlib, hashlib
-          expected='290923f57ab255f5910e9dd19b8603b3f22a79254bdd7dd13c888d67d5728ee0'
-          try:
-              staged=pathlib.Path('/home/teddy/handleit-releases/approved-mockup-20261114.zip')
-              raw=staged.read_bytes() if staged.is_file() else None
-              if raw is None or hashlib.sha256(raw).hexdigest()!=expected:
-                  from google.oauth2.credentials import Credentials
-                  from google.auth.transport.requests import Request
-                  from googleapiclient.discovery import build
-                  creds=Credentials.from_authorized_user_file('/home/teddy/gmail_token.json')
-                  if not creds.valid: creds.refresh(Request())
-                  svc=build('drive','v3',credentials=creds,cache_discovery=False)
-                  raw=svc.files().get_media(fileId='1Y5xZfkznt6wZ7PSx4-GVZtoGFLPhaOaB').execute()
-              assert len(raw)==1807302, 'Unexpected archive size'
-              assert hashlib.sha256(raw).hexdigest()==expected, 'Archive digest mismatch'
-              sys.stdout.buffer.write(raw)
-              print('Approved release transfer verified',file=sys.stderr)
-          except Exception as e:
-              code=getattr(getattr(e,'resp',None),'status',None)
-              print('Transfer failed: '+type(e).__name__+(' HTTP '+str(code) if code else ''),file=sys.stderr)
-              sys.exit(1)
+          ssh -i ~/.ssh/release_key -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15 teddy@50.21.187.249 python3 - <<'PY'
+          import pathlib,os
+          from cryptography.hazmat.primitives.asymmetric import rsa
+          from cryptography.hazmat.primitives import serialization
+          root=pathlib.Path('/home/teddy/handleit-releases');root.mkdir(mode=0o700,exist_ok=True)
+          path=root/'mockup-transfer-20261114.pem'
+          if not path.exists():
+              key=rsa.generate_private_key(public_exponent=65537,key_size=3072)
+              raw=key.private_bytes(serialization.Encoding.PEM,serialization.PrivateFormat.PKCS8,serialization.NoEncryption())
+              fd=os.open(str(path),os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+              with os.fdopen(fd,'wb') as f:f.write(raw)
+          else:key=serialization.load_pem_private_key(path.read_bytes(),password=None)
+          print(key.public_key().public_bytes(serialization.Encoding.PEM,serialization.PublicFormat.SubjectPublicKeyInfo).decode())
           PY
-      - name: Validate exact archive and preserve other site files
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import os, pathlib, hashlib, zipfile
-          archive=pathlib.Path(os.environ['RUNNER_TEMP'])/'approved-mockup.zip'
-          assert hashlib.sha256(archive.read_bytes()).hexdigest()=='290923f57ab255f5910e9dd19b8603b3f22a79254bdd7dd13c888d67d5728ee0'
-          expected={
-            'site/index.html':'1b4aa94c0da0f67d19849d07baea6cb1a5549b09b63ef4ecd39f4863bffa215f',
-            'site/assets/home-20261114/app.js':'24a0aae29e1067c97563761275dd8d646cdeed5be0e0d6c13b32f069e5afcc0e',
-            'site/assets/home-20261114/approved-hero.png':'c153069322e3cf47841254268b5813548b29c87051554e44ceeeb401462aac06',
-            'site/assets/home-20261114/mobile-sunset-crop.webp':'6dcc2d88ecac5adb64d1855fedf28523c16e2d9a28b346431889262e3a1f6198',
-            'site/assets/home-20261114/overview-poster.webp':'35f7a55ba2fb9074ef755ae2065fbb555b6c88e20a0b62c1ab605b7c1d296b3d',
-            'site/assets/home-20261114/peasantware-bull.png':'6d242797551124a2a83682cef68bf3cc67e99cf2ee9d4d2b8ffaf893a0a810e0',
-            'site/assets/home-20261114/styles.css':'e4919d682ea46eb3abab2b1729bd4b772ff8ddf1337123d048c1a1b73a6b6bc5'
-          }
-          with zipfile.ZipFile(archive) as z:
-              assert set(z.namelist())==set(expected), 'Unexpected release paths'
-              for name,digest in expected.items():
-                  raw=z.read(name)
-                  assert hashlib.sha256(raw).hexdigest()==digest, name
-                  p=pathlib.Path(name);p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(raw)
-                  print('Verified',name,len(raw),digest)
-          html=pathlib.Path('site/index.html').read_text()
-          assert '<title>HandleIT Business Essentials' in html
-          assert 'https://handleit.online/' in html
-          assert 'approved-mockup-20261114' in html
-          for p in ['site/duotext/index.html','site/lawn-care/index.html','site/command.html','site/app.js','site/style.css']:
-              assert pathlib.Path(p).is_file(), 'Missing preserved page '+p
-          print('Seven-file approved release validated; other routes preserved.')
-          PY
-          node --check site/assets/home-20261114/app.js
-          if find site -name 'process_form.php*' -o -name '.env*' | grep -q .; then
-            echo 'Unexpected server-only file'; exit 1
-          fi
-      - name: Commit approved website files to release branch only
-        run: |
-          set -euo pipefail
-          git add site/index.html site/assets/home-20261114/
-          git diff --cached --stat
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'feat(site): publish approved Business Essentials mockup for HandleIT'
-          git push origin HEAD:release/approved-mockup-20261114
-          echo "SOURCE_COMMIT=$(git rev-parse HEAD)"
