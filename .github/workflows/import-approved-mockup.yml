@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Inspect existing local Drive interface without exposing credentials
+      - name: Inspect existing local transfer interface
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         shell: bash
@@ -23,64 +23,45 @@ jobs:
           trap 'rm -f ~/.ssh/release_key' EXIT
           ssh-keyscan -H 50.21.187.249 >> ~/.ssh/known_hosts 2>/dev/null
           ssh -i ~/.ssh/release_key -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15 teddy@50.21.187.249 python3 - <<'PY'
-          import json, urllib.request, urllib.error, urllib.parse, threading, queue
+          import json, urllib.request, urllib.error
           base='http://localhost:8766'
-          def failure(where,e):
-              print(where, type(e).__name__, getattr(e,'code',''))
-              if isinstance(e,urllib.error.HTTPError):
-                  body=e.read(600).decode('utf-8','replace')
-                  if not any(s in body.lower() for s in ['access_token','refresh_token','client_secret','authorization','bearer']):
-                      print('Reason:',body)
-          try:
-              stream=urllib.request.urlopen(urllib.request.Request(base+'/sse',headers={'Accept':'text/event-stream'}),timeout=15)
-              fields={}
-              while True:
-                  raw=stream.readline()
-                  if not raw: raise RuntimeError('SSE ended before endpoint')
-                  line=raw.decode().strip()
-                  if not line:
-                      if fields.get('event')=='endpoint':
-                          endpoint=urllib.parse.urljoin(base,fields['data']);break
-                      fields={};continue
-                  if ':' in line:
-                      k,v=line.split(':',1);fields[k]=v.strip()
-              assert urllib.parse.urlsplit(endpoint).hostname in ['localhost','127.0.0.1']
-              responses=queue.Queue()
-              def listen():
-                  fields={}
-                  while True:
-                      try: raw=stream.readline()
-                      except Exception: break
-                      if not raw: break
-                      line=raw.decode().strip()
-                      if not line:
-                          if fields.get('data'):
-                              try: responses.put(json.loads(fields['data']))
-                              except ValueError: pass
-                          fields={}
-                      elif ':' in line:
-                          k,v=line.split(':',1);fields[k]=v.strip()
-              threading.Thread(target=listen,daemon=True).start()
-              def rpc(method,params=None,identifier=None):
-                  payload={'jsonrpc':'2.0','method':method}
-                  if params is not None: payload['params']=params
-                  if identifier is not None: payload['id']=identifier
-                  req=urllib.request.Request(endpoint,data=json.dumps(payload).encode(),headers={'Content-Type':'application/json'},method='POST')
-                  with urllib.request.urlopen(req,timeout=15) as response: response.read()
-                  if identifier is None:return
-                  while True:
-                      r=responses.get(timeout=15)
-                      if r.get('id')==identifier:return r
-              init=rpc('initialize',{'protocolVersion':'2024-11-05','capabilities':{},'clientInfo':{'name':'handleit-authorized-release','version':'1'}},1)
-              print('Initialization:', 'ok' if 'result' in init else init.get('error'))
-              rpc('notifications/initialized',{})
-              listed=rpc('tools/list',{},2)
-              tools=listed.get('result',{}).get('tools',[])
-              print('Tool count:',len(tools))
-              for tool in tools:
-                  if any(s in tool.get('name','').lower() for s in ['drive','download','file']):
-                      print(json.dumps(tool)[:18000])
-              stream.close()
-          except Exception as e:
-              failure('Local connector',e)
+          headers={'Accept':'application/json, text/event-stream','Content-Type':'application/json'}
+          def rpc(endpoint,method,params,ident=None):
+              payload={'jsonrpc':'2.0','method':method,'params':params}
+              if ident is not None:payload['id']=ident
+              with urllib.request.urlopen(urllib.request.Request(base+endpoint,data=json.dumps(payload).encode(),headers=headers,method='POST'),timeout=20) as r:
+                  session=r.headers.get('Mcp-Session-Id')
+                  if session:headers['Mcp-Session-Id']=session
+                  if ident is None:return {}
+                  if 'text/event-stream' in r.headers.get('Content-Type',''):
+                      for line in r:
+                          if line.startswith(b'data:'):
+                              obj=json.loads(line[5:])
+                              if obj.get('id')==ident:return obj
+                  return json.load(r)
+          found=False
+          for endpoint in ['/mcp','/mcp/']:
+              try:
+                  result=rpc(endpoint,'initialize',{'protocolVersion':'2024-11-05','capabilities':{},'clientInfo':{'name':'handleit-release','version':'1'}},1)
+                  headers['MCP-Protocol-Version']=result.get('result',{}).get('protocolVersion','2024-11-05')
+                  print('ENDPOINT',endpoint,'INITIALIZED', 'result' in result)
+                  rpc(endpoint,'notifications/initialized',{})
+                  result=rpc(endpoint,'tools/list',{},2)
+                  tools=result.get('result',{}).get('tools',[])
+                  print('TOOL COUNT',len(tools))
+                  for tool in tools:
+                      if any(x in tool.get('name','').lower() for x in ['drive','download','file','google']):
+                          print(json.dumps(tool)[:24000])
+                  found=True;break
+              except urllib.error.HTTPError as e:
+                  text=e.read(500).decode('utf8','replace')
+                  print('HTTP',endpoint,e.code)
+                  if not any(w in text.lower() for w in ['access_token','refresh_token','client_secret','bearer']):print(text)
+              except Exception as e: print(type(e).__name__)
+          if not found:
+              try:
+                  with urllib.request.urlopen(base+'/openapi.json',timeout=10) as r: spec=json.load(r)
+                  for path,methods in spec.get('paths',{}).items():
+                      if any(x in path.lower() for x in ['drive','file','download','mcp','tool']): print('API',path,json.dumps(methods)[:14000])
+              except Exception as e:print('API',type(e).__name__)
           PY
