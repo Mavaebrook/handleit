@@ -32,4 +32,13 @@ dialog{border:1px solid #d9e5ee;padding:0;border-radius:20px;width:min(850px,cal
 .footer-top .nav-wordmark{font-size:26px}
 @media(max-width:700px){.site-header .brand{gap:8px}.site-header .brand img{width:36px;height:36px;flex-basis:36px;margin-top:-3px}.site-header .nav-wordmark{font-size:26px}.site-header .nav-wordmark small{margin-top:6px}}
 
-
+/* Athena contact links; the IONOS embed owns its floating launcher. */
+.header-cta{white-space:nowrap}
+.hero-phone{display:inline-flex;align-items:center;gap:9px;min-height:44px;margin-top:12px;color:#d1e3f2;font-size:13px;line-height:1.5}
+.hero-phone .icon{width:18px;height:18px;color:var(--blue)}
+.hero-phone strong{color:var(--blue);font-weight:750;white-space:nowrap}
+.hero-phone:hover strong{text-decoration:underline}
+.contact-call{justify-content:flex-start;text-align:left;gap:13px}
+.contact-call .icon{width:23px;height:23px}
+.contact-call small{display:block;font-size:11px;font-weight:650;line-height:1.4}
+.contact-call strong{display:block;font-size:19px;font-weight:800;line-height:1.4;letter-spacing:.01em}
