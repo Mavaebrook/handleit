@@ -4,13 +4,16 @@ on:
     branches: ['release/approved-mockup-20261114']
     paths: ['.github/workflows/import-approved-mockup.yml']
 permissions:
-  contents: read
+  contents: write
 jobs:
-  handoff:
+  import:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
-      - name: Prepare one-time encrypted artifact handoff
+      - uses: actions/checkout@v4
+        with:
+          ref: release/approved-mockup-20261114
+      - name: Import exact release through encrypted one-time handoff
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         shell: bash
@@ -21,17 +24,70 @@ jobs:
           chmod 600 ~/.ssh/release_key
           trap 'rm -f ~/.ssh/release_key' EXIT
           ssh-keyscan -H 50.21.187.249 >> ~/.ssh/known_hosts 2>/dev/null
-          ssh -i ~/.ssh/release_key -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15 teddy@50.21.187.249 python3 - <<'PY'
-          import pathlib,os
-          from cryptography.hazmat.primitives.asymmetric import rsa
-          from cryptography.hazmat.primitives import serialization
-          root=pathlib.Path('/home/teddy/handleit-releases');root.mkdir(mode=0o700,exist_ok=True)
-          path=root/'mockup-transfer-20261114.pem'
-          if not path.exists():
-              key=rsa.generate_private_key(public_exponent=65537,key_size=3072)
-              raw=key.private_bytes(serialization.Encoding.PEM,serialization.PrivateFormat.PKCS8,serialization.NoEncryption())
-              fd=os.open(str(path),os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
-              with os.fdopen(fd,'wb') as f:f.write(raw)
-          else:key=serialization.load_pem_private_key(path.read_bytes(),password=None)
-          print(key.public_key().public_bytes(serialization.Encoding.PEM,serialization.PublicFormat.SubjectPublicKeyInfo).decode())
+          ssh -i ~/.ssh/release_key -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15 teddy@50.21.187.249 python3 - > "$RUNNER_TEMP/approved.zip" <<'PY'
+          import pathlib,base64,hashlib,sys,urllib.request,urllib.parse
+          from cryptography.hazmat.primitives import serialization,hashes
+          from cryptography.hazmat.primitives.asymmetric import padding
+          from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+          root=pathlib.Path('/home/teddy/handleit-releases')
+          keypath=root/'mockup-transfer-20261114.pem'
+          expected='290923f57ab255f5910e9dd19b8603b3f22a79254bdd7dd13c888d67d5728ee0'
+          envelope={'key':'RdM99JVUrqs43C1kpiPPF3zS43DcfqH/qQrurKGjpUX6L5rglEVHpH0hZz9+e3s+GgjJWc7lczf+UcxgGRIprgOEIpYn/4d3XFRWEHKYa0UnBseSeN9ThSsQUyH2uHssieZsVMLa/mpM/9UJVlVt/tjsvzlGDoP3sQpW3YkPYigrp3Xqx4wuruZppFdgmPR3f8g2QimzL6ACXa8EEa9p50+qCRiZNpDR0S/rnZ7XqYyUpmKwEomJumMdFHnw8iNe8mi87iRram6lrN+LcG3dVMvqFnl7oja45OW+TCSzXi7gCrN3LWXXGzqoAqExiBft/z0WYkJZwIdpa8DhcIt2PeCKjSKVao5f3aIeNjrWT06menYeqDNOvoJjeTmN+Lg/KwQMsrxw3pufJiw1NWxmtSh+0HNSDIB7/IUkWsiI3yEUgZpRJzdhX1elQDCoYz+FBIfmWI/NFcSy4t+BkLwkBkU0/Pvq4b++KOekJU83ka2+4AWI8bhSrLJw79fz9Uvs','nonce':'+qNysgOlpqUa6eIt','data':'pDLgjpFcgYwpB5fR9/tlqQuz74lovD/Wi5zMOJW075WcPH3y57PUreDPW7cRA5FviFJLehXXg4ukxhJjz1YIIJfyOzd4KAy5elkqa3Fzcq69VnwDfdWzhiF771TErOLN4yi3hiDx8nS6Has9/1NmjEYwabJwqmmIni51wEigPuCfvbUnEd2A3YsokFxr+hlr6hSPJmIJQ06GfvaxQ55NXU0TxK0PLz7NIO4huemF7+WhQ9eP0KY+MeFS0ovfgSPDXlTUD4tL9CWgmvXikfIoT0TY2gMj6YpOM5QNYXDWco1pCsaZPRilzxurX+NhiWsaT6Bj/AN6Qgw7b7AUX8w/WWAVDyjJxAv3K2Ivieu2E3NOhnPAyRh4DfIbI4JeJrjMDvAvhab6+kHCnNGmKKvYOka3WDty792R7SlGZ3ccQB17I2llF/mCgB1geJ/DJWYXqsSNMDr//l0vvU7R/Dc8mKhLEBO2LwLayj01m01EEKWatsu24oJq6Hu1TUawzocYOVQ3EytVx8P5nMwEkWaJ4TK5ypDeeFH6+Dj8BoOV0HkISA=='}
+          try:
+              staged=root/'approved-mockup-20261114.zip'
+              raw=staged.read_bytes() if staged.exists() else None
+              if raw is None or hashlib.sha256(raw).hexdigest()!=expected:
+                  key=serialization.load_pem_private_key(keypath.read_bytes(),password=None)
+                  aes=key.decrypt(base64.b64decode(envelope['key']),padding.OAEP(mgf=padding.MGF1(hashes.SHA256()),algorithm=hashes.SHA256(),label=None))
+                  url=AESGCM(aes).decrypt(base64.b64decode(envelope['nonce']),base64.b64decode(envelope['data']),b'handleit-release-20261114').decode()
+                  assert urllib.parse.urlsplit(url).scheme=='https'
+                  assert urllib.parse.urlsplit(url).hostname=='sdmntprcentralus.oaiusercontent.com'
+                  with urllib.request.urlopen(url,timeout=60) as r:raw=r.read(2000001)
+              assert len(raw)==1807302 and hashlib.sha256(raw).hexdigest()==expected
+              staged.write_bytes(raw);staged.chmod(0o600)
+              keypath.unlink(missing_ok=True)
+              sys.stdout.buffer.write(raw)
+              print('Release received and digest verified; temporary private key removed.',file=sys.stderr)
+          except Exception as e:
+              print('Artifact handoff failed: '+type(e).__name__+' '+str(getattr(e,'code','')),file=sys.stderr)
+              sys.exit(1)
           PY
+      - name: Validate exact seven-file release and preserve other routes
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,pathlib,hashlib,zipfile
+          archive=pathlib.Path(os.environ['RUNNER_TEMP'])/'approved.zip'
+          assert hashlib.sha256(archive.read_bytes()).hexdigest()=='290923f57ab255f5910e9dd19b8603b3f22a79254bdd7dd13c888d67d5728ee0'
+          expected={
+          'site/index.html':'1b4aa94c0da0f67d19849d07baea6cb1a5549b09b63ef4ecd39f4863bffa215f',
+          'site/assets/home-20261114/app.js':'24a0aae29e1067c97563761275dd8d646cdeed5be0e0d6c13b32f069e5afcc0e',
+          'site/assets/home-20261114/approved-hero.png':'c153069322e3cf47841254268b5813548b29c87051554e44ceeeb401462aac06',
+          'site/assets/home-20261114/mobile-sunset-crop.webp':'6dcc2d88ecac5adb64d1855fedf28523c16e2d9a28b346431889262e3a1f6198',
+          'site/assets/home-20261114/overview-poster.webp':'35f7a55ba2fb9074ef755ae2065fbb555b6c88e20a0b62c1ab605b7c1d296b3d',
+          'site/assets/home-20261114/peasantware-bull.png':'6d242797551124a2a83682cef68bf3cc67e99cf2ee9d4d2b8ffaf893a0a810e0',
+          'site/assets/home-20261114/styles.css':'e4919d682ea46eb3abab2b1729bd4b772ff8ddf1337123d048c1a1b73a6b6bc5'}
+          with zipfile.ZipFile(archive) as z:
+              assert set(z.namelist())==set(expected)
+              for name,digest in expected.items():
+                  raw=z.read(name);assert hashlib.sha256(raw).hexdigest()==digest,name
+                  p=pathlib.Path(name);p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(raw)
+                  print('VERIFIED',name,len(raw),digest)
+          html=pathlib.Path('site/index.html').read_text()
+          assert '<title>HandleIT Business Essentials' in html and 'approved-mockup-20261114' in html
+          assert 'https://handleit.online/' in html
+          for p in ['site/duotext/index.html','site/lawn-care/index.html','site/command.html','site/app.js','site/style.css']:assert pathlib.Path(p).is_file(),p
+          print('Seven release files verified; existing subpages preserved.')
+          PY
+          node --check site/assets/home-20261114/app.js
+          if find site -name 'process_form.php*' -o -name '.env*' | grep -q .; then exit 1; fi
+      - name: Commit website source to release branch only
+        run: |
+          set -euo pipefail
+          git add site/index.html site/assets/home-20261114/
+          git diff --cached --stat
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat(site): approved HandleIT Business Essentials homepage mockup'
+          git push origin HEAD:release/approved-mockup-20261114
+          echo "SOURCE_COMMIT=$(git rev-parse HEAD)"
