@@ -54,3 +54,5 @@ dialog{border:1px solid #d9e5ee;padding:0;border-radius:20px;width:min(850px,cal
 @media(min-width:981px){.command-grid{grid-template-columns:.7fr 1.3fr;gap:48px}}
 @media(max-width:980px){.hub-preview{width:100%;max-width:780px;margin-inline:auto}}
 @media(max-width:700px){.hub-desktop{display:none}.hub-mobile{display:block}.command-copy>.text-link.hub-mobile{display:inline-flex}.hub-preview{max-width:430px;border-radius:14px}.hub-preview figcaption{display:block;padding:13px 16px;font-size:10px}.hub-preview figcaption span{display:block;margin-top:3px}}
+
+.footer-legal a{color:inherit;text-decoration:underline;text-underline-offset:2px}@media(max-width:700px){.footer-legal{order:4;flex-basis:100%}}
